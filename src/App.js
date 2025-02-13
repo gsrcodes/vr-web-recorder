@@ -10,12 +10,11 @@ function App() {
   const recordedChunksRef = useRef([]);
 
   // Função para iniciar a VR e gravação
-  const startVR = () => {
-    const vrWindow = window.open(window.location.origin + "/webgl/index.html", "_blank");
-    setIsVRRunning(true);
+  function startVR() {
+    const webglPath = window.location.origin + window.location.pathname + "webgl/index.html";
+    window.open(webglPath, "_blank");
+}
 
-    setTimeout(() => startRecording(vrWindow), 2000);
-  };
 
   // Inicia a gravação da tela
   const startRecording = async (vrWindow) => {
