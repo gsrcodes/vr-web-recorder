@@ -11,9 +11,21 @@ function App() {
 
   // Função para iniciar a VR e gravação
   function startVR() {
-    const webglPath = window.location.origin + window.location.pathname + "webgl/index.html";
-    window.open(webglPath, "_blank");
+    const webglPath = window.location.origin + "/webgl/index.html";
+    const vrWindow = window.open(webglPath, "_blank");
+
+    console.log("VR Iniciado: ", vrWindow);
+
+    setIsVRRunning(true);
+
+    // Pequeno delay para garantir que a aba do WebGL esteja aberta
+    setTimeout(() => {
+        console.log("Tentando iniciar a gravação...");
+        startRecording(vrWindow);
+    }, 2000);
 }
+
+
 
 
   // Inicia a gravação da tela
