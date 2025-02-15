@@ -1,20 +1,31 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import { createFFmpeg, fetchFile } from "@ffmpeg/ffmpeg";
+import "bootstrap/dist/css/bootstrap.min.css";
+
 const ffmpeg = createFFmpeg({ log: true });
 
 function App() {
   const [isVRRunning, setIsVRRunning] = useState(false);
-  const [selectedMap, setSelectedMap] = useState("floresta");
+  const [isRecording, setIsRecording] = useState(false);
+  const [showNotes, setShowNotes] = useState(false);
+  const [selectedMap, setSelectedMap] = useState("sakura");
   const [userText, setUserText] = useState("");
   const videoRef = useRef(null);
   const mediaRecorderRef = useRef(null);
   const recordedChunksRef = useRef([]);
   const vrWindowRef = useRef(null);
+  const [isSaving, setIsSaving] = useState(false); // Novo estado para bloquear a UI
 
   // Estados para os sons
-  const [birdsSound, setBirdsSound] = useState(true);
-  const [windSound, setWindSound] = useState(false);
-  const [musicSound, setMusicSound] = useState(false);
+  const [birds, setBirdsSound] = useState(true);
+  const [wind, setWindSound] = useState(true);
+  const [music, setMusicSound] = useState(true);
+
+  useEffect(() => {
+    if (isVRRunning) {
+      updateSoundSettings();
+    }
+  }, [birds, wind, music]);
 
   // Opções de mapas
   const maps = [
@@ -28,92 +39,130 @@ function App() {
       return;
     }
 
-    const webglPath = `${window.location.origin}/vr-web-recorder/webgl/index.html?map=${selectedMap}`;
+    const webglPath = `${window.location.origin}/vr-web-recorder/webgl/index.html?map=${selectedMap}&birds=${birds}&wind=${wind}&music=${music}`;
     const vrWin = window.open(webglPath, "_blank");
     vrWindowRef.current = vrWin;
 
     console.log("VR Iniciado no mapa:", selectedMap);
+    console.log("Configuração de sons inicial:", { birds, wind, music });
 
     setIsVRRunning(true);
-    setTimeout(() => startRecording(), 2000);
-
-    // Aguarda um tempo e envia a configuração inicial dos sons
-    setTimeout(() => updateSoundSettings(), 4000);
   }
 
-  // Atualiza os sons em tempo real no WebGL
   function updateSoundSettings() {
     if (vrWindowRef.current) {
-      vrWindowRef.current.postMessage(
-        {
-          type: "updateSounds",
-          birds: birdsSound,
-          wind: windSound,
-          music: musicSound,
-        },
-        "*"
-      );
-      console.log("Enviando configuração de sons para WebGL:", { birdsSound, windSound, musicSound });
+      const soundSettings = { birds, wind, music };
+      vrWindowRef.current.postMessage({ type: "updateSounds", ...soundSettings }, "*");
+      console.log("🔊 Enviando configuração de sons para WebGL:", soundSettings);
     }
   }
 
-  // Inicia a gravação da tela
   const startRecording = async () => {
     try {
-      const stream = await navigator.mediaDevices.getDisplayMedia({
-        video: { mediaSource: "screen" },
-      });
-
-      videoRef.current.srcObject = stream;
-      mediaRecorderRef.current = new MediaRecorder(stream, {
-        mimeType: "video/webm",
-      });
-
-      mediaRecorderRef.current.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          recordedChunksRef.current.push(event.data);
+        if (!videoRef.current) {
+            console.error("Elemento de vídeo não encontrado.");
+            return;
         }
-      };
 
-      mediaRecorderRef.current.start();
+        const stream = await navigator.mediaDevices.getDisplayMedia({
+            video: { mediaSource: "screen" }, // Mantém a gravação de outra tela
+        });
+
+        videoRef.current.srcObject = stream;
+        recordedChunksRef.current = []; // Limpa a gravação anterior
+
+        mediaRecorderRef.current = new MediaRecorder(stream, {
+            mimeType: "video/webm",
+        });
+
+        mediaRecorderRef.current.ondataavailable = (event) => {
+            if (event.data.size > 0) {
+                recordedChunksRef.current.push(event.data);
+            }
+        };
+
+        mediaRecorderRef.current.onstop = async () => {
+            if (recordedChunksRef.current.length > 0) {
+                setIsSaving(true); // Bloqueia UI ao iniciar o salvamento
+
+                const blob = new Blob(recordedChunksRef.current, { type: "video/webm" });
+                const url = URL.createObjectURL(blob);
+
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = "gravacao-vr.webm";
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+
+                console.log("📁 Gravação finalizada e salva!");
+            }
+
+            // Parar o compartilhamento de tela corretamente
+            stream.getTracks().forEach(track => track.stop());
+
+            setIsSaving(false); // Libera UI após salvar
+            setIsRecording(false);
+        };
+
+        mediaRecorderRef.current.start();
+        setIsRecording(true);
+        console.log("🎥 Gravação iniciada!");
     } catch (err) {
-      console.error("Erro ao iniciar gravação:", err);
+        console.error("Erro ao iniciar gravação:", err);
     }
   };
 
-  // Parar VR e salvar vídeo + texto
+  const stopRecording = async () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+        console.log("⏹ Parando gravação...");
+        return new Promise((resolve) => {
+            mediaRecorderRef.current.onstop = async () => {
+                if (recordedChunksRef.current.length > 0) {
+                    setIsSaving(true); // Bloqueia UI ao iniciar o salvamento
+
+                    const blob = new Blob(recordedChunksRef.current, { type: "video/webm" });
+                    const url = URL.createObjectURL(blob);
+
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = "gravacao-vr.webm";
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+
+                    console.log("📁 Gravação finalizada e salva!");
+                }
+
+                setIsSaving(false); // Libera UI após salvar
+                setIsRecording(false);
+                resolve();
+            };
+            mediaRecorderRef.current.stop();
+        });
+    }
+  };
+
+
   const stopVR = async () => {
-    setIsVRRunning(false);
-
-    if (mediaRecorderRef.current) {
-      mediaRecorderRef.current.stop();
-      mediaRecorderRef.current.onstop = async () => {
-        const blob = new Blob(recordedChunksRef.current, { type: "video/webm" });
-        const mp4Url = await convertToMp4(blob);
-
-        const a = document.createElement("a");
-        a.href = mp4Url;
-        a.download = "gravacao-vr.mp4";
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(mp4Url);
-      };
+    if (isRecording) {
+        setIsSaving(true); // Bloqueia UI antes de parar a gravação
+        await stopRecording(); // Aguarda a gravação ser finalizada antes de continuar
     }
 
-    if (videoRef.current && videoRef.current.srcObject) {
-      let tracks = videoRef.current.srcObject.getTracks();
-      tracks.forEach(track => track.stop());
-      videoRef.current.srcObject = null;
+    setIsVRRunning(false);
+    setShowNotes(false);
+
+    if (userText.trim() !== "") {
+        downloadTextFile(userText);
     }
 
     if (vrWindowRef.current && !vrWindowRef.current.closed) {
-      vrWindowRef.current.close();
+        vrWindowRef.current.close();
     }
-
-    downloadTextFile(userText);
   };
 
-  // Salvar o texto como .txt
+
   const downloadTextFile = (text) => {
     const blob = new Blob([text], { type: "text/plain" });
     const a = document.createElement("a");
@@ -124,102 +173,91 @@ function App() {
     window.URL.revokeObjectURL(a.href);
   };
 
-  // Converter WEBM para MP4
-  const convertToMp4 = async (blob) => {
-    if (!ffmpeg.isLoaded()) {
-      await ffmpeg.load();
-    }
+  const BlockUI = () => (
+    <div style={{
+        position: "fixed",
+        top: 0, left: 0, width: "100%", height: "100%",
+        backgroundColor: "rgba(0, 0, 0, 0.5)",
+        zIndex: 9999,
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        color: "white",
+        fontSize: "24px",
+        fontWeight: "bold"
+    }}>
+        Salvando gravação... Aguarde.
+    </div>
+  );
 
-    await ffmpeg.FS("writeFile", "video.webm", await fetchFile(blob));
-    await ffmpeg.run("-i", "video.webm", "output.mp4");
-
-    const mp4Data = ffmpeg.FS("readFile", "output.mp4");
-    const mp4Blob = new Blob([mp4Data.buffer], { type: "video/mp4" });
-
-    return URL.createObjectURL(mp4Blob);
-  };
-
+  {isSaving && <BlockUI />}
   return (
-    <div style={{ textAlign: "center", marginTop: "50px" }}>
-      <h1>Realidade Virtual Web</h1>
+    <div className="container mt-5">
+      <div className="card shadow-lg p-4">
+        <h1 className="text-center text-primary mb-4">Realidade Virtual Web</h1>
 
-      {/* Selecionar o mapa */}
-      <label htmlFor="mapSelect">Escolha um mapa:</label>
-      <select
-        id="mapSelect"
-        value={selectedMap}
-        onChange={(e) => setSelectedMap(e.target.value)}
-        disabled={isVRRunning}
-      >
-        {maps.map((map) => (
-          <option key={map.value} value={map.value}>{map.name}</option>
-        ))}
-      </select>
-
-      <br /><br />
-
-      {/* Configuração dos Sons */}
-      <h3>Configurações de Som:</h3>
-      <label>
-        <input
-          type="checkbox"
-          checked={birdsSound}
-          onChange={() => { setBirdsSound(!birdsSound); updateSoundSettings(); }}
-          disabled={!isVRRunning}
-        />
-        Som de Pássaros
-      </label>
-
-      <br />
-
-      <label>
-        <input
-          type="checkbox"
-          checked={windSound}
-          onChange={() => { setWindSound(!windSound); updateSoundSettings(); }}
-          disabled={!isVRRunning}
-        />
-        Som de Vento
-      </label>
-
-      <br />
-
-      <label>
-        <input
-          type="checkbox"
-          checked={musicSound}
-          onChange={() => { setMusicSound(!musicSound); updateSoundSettings(); }}
-          disabled={!isVRRunning}
-        />
-        Música de Fundo
-      </label>
-
-      <br /><br />
-
-      <button onClick={startVR} disabled={isVRRunning}>
-        Iniciar VR
-      </button>
-
-      <button onClick={stopVR} disabled={!isVRRunning} style={{ marginLeft: "10px" }}>
-        Parar VR
-      </button>
-
-      <br /><br />
-
-      {isVRRunning && (
-        <div>
-          <h3>Anotações:</h3>
-          <textarea
-            rows="5"
-            cols="50"
-            value={userText}
-            onChange={(e) => setUserText(e.target.value)}
-            placeholder="Digite suas anotações aqui..."
-          />
+        {/* Selecionar o mapa */}
+        <div className="mb-3">
+          <label htmlFor="mapSelect" className="form-label fw-bold">Escolha um mapa:</label>
+          <select
+            id="mapSelect"
+            className="form-select"
+            value={selectedMap}
+            onChange={(e) => setSelectedMap(e.target.value)}
+            disabled={isVRRunning}
+          >
+            {maps.map((map) => (
+              <option key={map.value} value={map.value}>{map.name}</option>
+            ))}
+          </select>
         </div>
-      )}
 
-      <video ref={videoRef} style={{ display: "none" }} autoPlay />
+        {/* Configuração dos Sons */}
+        <div className="mb-3">
+          <h3 className="fw-bold text-secondary">Configurações de Som:</h3>
+          <div className="form-check">
+            <input type="checkbox" className="form-check-input" id="birdsSound" checked={birds} onChange={() => setBirdsSound(!birds)} />
+            <label className="form-check-label" htmlFor="birdsSound">Som de Pássaros</label>
+          </div>
+
+          <div className="form-check">
+            <input type="checkbox" className="form-check-input" id="windSound" checked={wind} onChange={() => setWindSound(!wind)} />
+            <label className="form-check-label" htmlFor="windSound">Som de Vento</label>
+          </div>
+
+          <div className="form-check">
+            <input type="checkbox" className="form-check-input" id="musicSound" checked={music} onChange={() => setMusicSound(!music)} />
+            <label className="form-check-label" htmlFor="musicSound">Música de Fundo</label>
+          </div>
+        </div>
+
+        {/* Botões */}
+        <div className="d-flex justify-content-center gap-3">
+          <button className="btn btn-success btn-lg" onClick={startVR} disabled={isVRRunning}>🎮 Iniciar VR</button>
+          <button className="btn btn-danger btn-lg" onClick={stopVR} disabled={!isVRRunning}>⛔ Parar VR</button>
+        </div>
+
+        {/* Botão de Gravação */}
+        <div className="mt-3 d-flex justify-content-center">
+          <button className={`btn btn-lg ${isRecording ? "btn-danger" : "btn-warning"}`} onClick={isRecording ? stopRecording : startRecording} disabled={!isVRRunning}>
+            {isRecording ? "⏹ Parar Gravação" : "🎥 Iniciar Gravação"}
+          </button>
+        </div>
+
+        {/* Anotações */}
+        {isVRRunning && (
+          <div className="mt-4 text-center">
+            {!showNotes ? (
+              <button className="btn btn-info btn-lg" onClick={() => setShowNotes(true)}>📝 Abrir Anotações</button>
+            ) : (
+              <textarea className="form-control mt-3" rows="4" value={userText} onChange={(e) => setUserText(e.target.value)} placeholder="Digite suas anotações..." />
+            )}
+          </div>
+        )}
+
+        {/* Adiciona o elemento de vídeo oculto */}
+        <video ref={videoRef} style={{ display: "none" }} autoPlay playsInline />
+      </div>
     </div>
   );
 }
