@@ -1,15 +1,15 @@
 {
   "files": {
-    "main.css": "/static/css/main.9fe40f7c.css",
-    "main.js": "/static/js/main.7d812da8.js",
-    "static/js/488.a771496d.chunk.js": "/static/js/488.a771496d.chunk.js",
-    "index.html": "/index.html",
-    "main.9fe40f7c.css.map": "/static/css/main.9fe40f7c.css.map",
-    "main.7d812da8.js.map": "/static/js/main.7d812da8.js.map",
-    "488.a771496d.chunk.js.map": "/static/js/488.a771496d.chunk.js.map"
+    "main.css": "/vr-web-recorder/static/css/main.9fe40f7c.css",
+    "main.js": "/vr-web-recorder/static/js/main.ef11d5d2.js",
+    "static/js/488.a771496d.chunk.js": "/vr-web-recorder/static/js/488.a771496d.chunk.js",
+    "index.html": "/vr-web-recorder/index.html",
+    "main.9fe40f7c.css.map": "/vr-web-recorder/static/css/main.9fe40f7c.css.map",
+    "main.ef11d5d2.js.map": "/vr-web-recorder/static/js/main.ef11d5d2.js.map",
+    "488.a771496d.chunk.js.map": "/vr-web-recorder/static/js/488.a771496d.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.9fe40f7c.css",
-    "static/js/main.7d812da8.js"
+    "static/js/main.ef11d5d2.js"
   ]
 }
