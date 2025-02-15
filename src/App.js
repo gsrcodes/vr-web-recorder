@@ -9,15 +9,19 @@ function App() {
   const videoRef = useRef(null);
   const mediaRecorderRef = useRef(null);
   const recordedChunksRef = useRef([]);
-  const vrWindowRef = useRef(null); // Referência para a aba do WebGL
+  const vrWindowRef = useRef(null);
 
+  // Estados para os sons
+  const [birdsSound, setBirdsSound] = useState(true);
+  const [windSound, setWindSound] = useState(false);
+  const [musicSound, setMusicSound] = useState(false);
+
+  // Opções de mapas
   const maps = [
     { name: "Floresta", value: "floresta" },
-    { name: "Sakura", value: "sakura" },
-    { name: "Deserto", value: "deserto" }
+    { name: "Sakura", value: "sakura" }
   ];
 
-  // Iniciar VR com gravação de tela
   function startVR() {
     if (!selectedMap) {
       alert("Escolha um mapa antes de iniciar!");
@@ -26,26 +30,41 @@ function App() {
 
     const webglPath = `${window.location.origin}/vr-web-recorder/webgl/index.html?map=${selectedMap}`;
     const vrWin = window.open(webglPath, "_blank");
-    vrWindowRef.current = vrWin; // Salva a referência da aba
+    vrWindowRef.current = vrWin;
 
     console.log("VR Iniciado no mapa:", selectedMap);
-    setIsVRRunning(true);
 
-    // Espera a aba abrir para iniciar gravação
+    setIsVRRunning(true);
     setTimeout(() => startRecording(), 2000);
+
+    // Aguarda um tempo e envia a configuração inicial dos sons
+    setTimeout(() => updateSoundSettings(), 4000);
   }
 
-  // Iniciar gravação de tela
+  // Atualiza os sons em tempo real no WebGL
+  function updateSoundSettings() {
+    if (vrWindowRef.current) {
+      vrWindowRef.current.postMessage(
+        {
+          type: "updateSounds",
+          birds: birdsSound,
+          wind: windSound,
+          music: musicSound,
+        },
+        "*"
+      );
+      console.log("Enviando configuração de sons para WebGL:", { birdsSound, windSound, musicSound });
+    }
+  }
+
+  // Inicia a gravação da tela
   const startRecording = async () => {
     try {
-      console.log("Solicitando permissão para gravação...");
       const stream = await navigator.mediaDevices.getDisplayMedia({
         video: { mediaSource: "screen" },
       });
 
-      console.log("Permissão concedida! Iniciando gravação...");
       videoRef.current.srcObject = stream;
-
       mediaRecorderRef.current = new MediaRecorder(stream, {
         mimeType: "video/webm",
       });
@@ -57,7 +76,6 @@ function App() {
       };
 
       mediaRecorderRef.current.start();
-      console.log("Gravação iniciada!");
     } catch (err) {
       console.error("Erro ao iniciar gravação:", err);
     }
@@ -67,7 +85,6 @@ function App() {
   const stopVR = async () => {
     setIsVRRunning(false);
 
-    // Parar a gravação
     if (mediaRecorderRef.current) {
       mediaRecorderRef.current.stop();
       mediaRecorderRef.current.onstop = async () => {
@@ -83,19 +100,16 @@ function App() {
       };
     }
 
-    // Parar compartilhamento de tela
     if (videoRef.current && videoRef.current.srcObject) {
       let tracks = videoRef.current.srcObject.getTracks();
       tracks.forEach(track => track.stop());
       videoRef.current.srcObject = null;
     }
 
-    // Fechar a aba do WebGL
     if (vrWindowRef.current && !vrWindowRef.current.closed) {
       vrWindowRef.current.close();
     }
 
-    // Salvar o texto digitado
     downloadTextFile(userText);
   };
 
@@ -144,6 +158,44 @@ function App() {
 
       <br /><br />
 
+      {/* Configuração dos Sons */}
+      <h3>Configurações de Som:</h3>
+      <label>
+        <input
+          type="checkbox"
+          checked={birdsSound}
+          onChange={() => { setBirdsSound(!birdsSound); updateSoundSettings(); }}
+          disabled={!isVRRunning}
+        />
+        Som de Pássaros
+      </label>
+
+      <br />
+
+      <label>
+        <input
+          type="checkbox"
+          checked={windSound}
+          onChange={() => { setWindSound(!windSound); updateSoundSettings(); }}
+          disabled={!isVRRunning}
+        />
+        Som de Vento
+      </label>
+
+      <br />
+
+      <label>
+        <input
+          type="checkbox"
+          checked={musicSound}
+          onChange={() => { setMusicSound(!musicSound); updateSoundSettings(); }}
+          disabled={!isVRRunning}
+        />
+        Música de Fundo
+      </label>
+
+      <br /><br />
+
       <button onClick={startVR} disabled={isVRRunning}>
         Iniciar VR
       </button>
@@ -154,7 +206,6 @@ function App() {
 
       <br /><br />
 
-      {/* Campo de texto aparece apenas quando o VR está ativo */}
       {isVRRunning && (
         <div>
           <h3>Anotações:</h3>
