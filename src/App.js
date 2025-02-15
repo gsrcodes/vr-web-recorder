@@ -24,7 +24,7 @@ function App() {
       return;
     }
 
-    const webglPath = `${window.location.origin}/webgl/index.html?map=${selectedMap}`;
+    const webglPath = `${window.location.origin}vr-web-recorder/webgl/index.html?map=${selectedMap}`;
     const vrWin = window.open(webglPath, "_blank");
     vrWindowRef.current = vrWin; // Salva a referência da aba
 
