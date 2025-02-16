@@ -1,15 +1,15 @@
 {
   "files": {
     "main.css": "/vr-web-recorder/static/css/main.9fe40f7c.css",
-    "main.js": "/vr-web-recorder/static/js/main.7b59b921.js",
+    "main.js": "/vr-web-recorder/static/js/main.1cdbadbc.js",
     "static/js/488.a771496d.chunk.js": "/vr-web-recorder/static/js/488.a771496d.chunk.js",
     "index.html": "/vr-web-recorder/index.html",
     "main.9fe40f7c.css.map": "/vr-web-recorder/static/css/main.9fe40f7c.css.map",
-    "main.7b59b921.js.map": "/vr-web-recorder/static/js/main.7b59b921.js.map",
+    "main.1cdbadbc.js.map": "/vr-web-recorder/static/js/main.1cdbadbc.js.map",
     "488.a771496d.chunk.js.map": "/vr-web-recorder/static/js/488.a771496d.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.9fe40f7c.css",
-    "static/js/main.7b59b921.js"
+    "static/js/main.1cdbadbc.js"
   ]
 }
