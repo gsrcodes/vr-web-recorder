@@ -26,11 +26,20 @@ function App() {
   const [wind, setWindSound] = useState(true);
   const [music, setMusicSound] = useState(true);
 
+  // 🐶 Novos estados para controle do Corgi
+  const [isCorgiVisible, setIsCorgiVisible] = useState(true);
+  const [doesCorgiFollow, setDoesCorgiFollow] = useState(true);
+
+  // Se o Corgi for desativado, ele não pode seguir o jogador
+  useEffect(() => {
+      setDoesCorgiFollow(isCorgiVisible);
+  }, [isCorgiVisible]);
+  
   useEffect(() => {
     if (isVRRunning) {
       updateSettings();
     }
-  }, [isBreathingEnabled, birds, wind, music]);
+  }, [isBreathingEnabled, birds, wind, music, isCorgiVisible, doesCorgiFollow]);
 
   useEffect(() => {
     const checkVRWindowClosed = setInterval(() => {
@@ -68,11 +77,12 @@ function App() {
 
   function startVR() {
     if (!selectedMap) {
-        alert("Escolha um mapa antes de iniciar!");
-        return;
+      alert("Escolha um mapa antes de iniciar!");
+      return;
     }
 
-    const webglPath = `${window.location.origin}/vr-web-recorder/webgl/index.html?map=${selectedMap}&birds=${birds}&wind=${wind}&music=${music}&breathing=${isBreathingEnabled}`;
+    const webglPath = `${window.location.origin}/vr-web-recorder/webgl/index.html?map=${selectedMap}&birds=${birds}&wind=${wind}&music=${music}&breathing=${isBreathingEnabled}&corgiVisible=${isCorgiVisible}&corgiFollows=${doesCorgiFollow}`;
+    
     const vrWin = window.open(webglPath, "_blank");
     vrWindowRef.current = vrWin;
 
@@ -86,7 +96,15 @@ function App() {
 
   function updateSettings() {
     if (vrWindowRef.current) {
-      const settings = { birds, wind, music, breathing: isBreathingEnabled };
+      const settings = {
+        birds,
+        wind,
+        music,
+        breathing: isBreathingEnabled,
+        corgiVisible: isCorgiVisible,
+        corgiFollows: doesCorgiFollow,
+      };
+
       vrWindowRef.current.postMessage({ type: "updateSettings", ...settings }, "*");
       console.log("🔄 Enviando configurações para Unity:", settings);
     }
@@ -292,6 +310,19 @@ function App() {
           <div className="form-check">
             <input type="checkbox" className="form-check-input" id="breathing" checked={isBreathingEnabled} onChange={() => setIsBreathingEnabled(!isBreathingEnabled)} />
             <label className="form-check-label" htmlFor="breathing">Ativar Círculo de Respiração</label>
+          </div>
+        </div>
+
+        {/* Configuração do Corgi */}
+        <div className="mb-3">
+          <h3 className="fw-bold text-secondary">Configurações do Corgi:</h3>
+          <div className="form-check">
+            <input type="checkbox" className="form-check-input" id="corgiVisible" checked={isCorgiVisible} onChange={() => setIsCorgiVisible(!isCorgiVisible)} />
+            <label className="form-check-label" htmlFor="corgiVisible">Mostrar Corgi</label>
+          </div>
+          <div className="form-check">
+            <input type="checkbox" className="form-check-input" id="corgiFollow" checked={doesCorgiFollow} onChange={() => setDoesCorgiFollow(!doesCorgiFollow)} disabled={!isCorgiVisible}/>
+            <label className="form-check-label" htmlFor="corgiFollow">Corgi segue o jogador</label>
           </div>
         </div>
 
