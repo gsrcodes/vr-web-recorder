@@ -17,7 +17,7 @@ const useVR = () => {
   const vrWindowRef = useRef(null);
 
   const startVR = () => {
-    const webglPath = `${window.location.origin}/webgl/index.html?map=${map}&birds=${birds}&wind=${wind}&music=${music}&breathing=${isBreathingEnabled}&corgiVisible=${corgiVisible}&corgiFollows=${corgiFollows}`;
+    const webglPath = `${window.location.origin}/vr-web-recorder/webgl/index.html?map=${map}&birds=${birds}&wind=${wind}&music=${music}&breathing=${isBreathingEnabled}&corgiVisible=${corgiVisible}&corgiFollows=${corgiFollows}`;
     const vrWin = window.open(webglPath, "_blank");
     vrWindowRef.current = vrWin;
     setIsVRRunning(true);
